@@ -1628,7 +1628,7 @@
         // Load data
         async function loadData() {
             try {
-                const response = await fetch('https://doct3rwatson.github.io/Lensing-DB-redshifts/spec_conf_lens_db.csv');
+                const response = await fetch('./spec_conf_lens_db.csv');
                 const csvText = await response.text();
                 
                 Papa.parse(csvText, {
