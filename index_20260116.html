@@ -247,11 +247,16 @@
         }
 
         #instructions {
-            background: transparent;
-            padding: 0;
-            border: none;
-            max-width: none;
-            box-shadow: none;
+            position: absolute;
+            top: 45px;
+            right: 15px;
+            background: rgba(20, 25, 45, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #3a4a7a;
+            max-width: 300px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            z-index: 100;
         }
         
         #instructions h3 {
@@ -495,27 +500,24 @@
                     <button class="close-btn" onclick="unpinTooltip()">×</button>
                 </div>
                 <div id="stats"></div>
+                <div id="instructions">
+                    <button class="toggle-btn" onclick="toggleInstructions()">−</button>
+                    <h3>How to Use</h3>
+                    <ul>
+                        <li><strong>Hover</strong> over any point to view system details</li>
+                        <li><strong>Click</strong> a point to pin the tooltip (click × to close)</li>
+                        <li>Click <strong>"View Paper"</strong> in tooltips to access reference</li>
+                        <li><strong>Click</strong> a point on the legend to highlight target subset</li>
+                        <li><strong>Drag</strong> to pan around the sky map</li>
+                        <li><strong>Scroll</strong> to zoom in/out</li>
+                        <li>Use <strong>controls</strong> to change projection, point size, and color scheme</li>
+                        <li>Use <strong>slider</strong> to step through discoveries in each year</li>
+                    </ul>
+                </div>
             </div>
 
             <!-- Right column: Info panels -->
             <div class="info-column">
-                <div class="info-panel">
-                    <div id="instructions">
-                        <button class="toggle-btn" onclick="toggleInstructions()">−</button>
-                        <h3>How to Use</h3>
-                        <ul>
-                            <li><strong>Hover</strong> over any point to view system details</li>
-                            <li><strong>Click</strong> a point to pin the tooltip (click × to close)</li>
-                            <li>Click <strong>"View Paper"</strong> in tooltips to access reference</li>
-                            <li><strong>Click</strong> a point on the legend to highlight target subset</li>
-                            <li><strong>Drag</strong> to pan around the sky map</li>
-                            <li><strong>Scroll</strong> to zoom in/out</li>
-                            <li>Use <strong>controls</strong> to change projection, point size, and color scheme</li>
-                            <li>Use <strong>slider</strong> to step through discoveries in each year</li>
-                        </ul>
-                    </div>
-                </div>
-
                 <div class="info-panel spacer"></div>
 
                 <div class="info-panel">
