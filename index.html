@@ -436,6 +436,8 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 </head>
 <body>
     <div id="container">
@@ -483,8 +485,9 @@
                 <canvas id="countChart"></canvas>
             </div>
 
-            <div class="chart-panel">
+            <div class="chart-panel" style="position: relative;">
                 <div class="chart-title">z<sub>source</sub> vs z<sub>deflector</sub></div>
+                <button onclick="resetRedshiftZoom()" style="position: absolute; top: 8px; right: 8px; background: #3a4a7a; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; z-index: 10;" title="Reset zoom">Reset</button>
                 <canvas id="redshiftChart"></canvas>
             </div>
 
@@ -1729,10 +1732,42 @@
                                     ];
                                 }
                             }
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                drag: {
+                                    enabled: true,
+                                    backgroundColor: 'rgba(100, 181, 246, 0.2)',
+                                    borderColor: 'rgba(100, 181, 246, 0.8)',
+                                    borderWidth: 1
+                                },
+                                mode: 'xy',
+                            },
+                            limits: {
+                                x: { min: 0, max: 2 },
+                                y: { min: 0, max: 10 }
+                            }
                         }
                     }
                 }
             });
+        }
+
+        // Reset zoom on redshift chart
+        function resetRedshiftZoom() {
+            if (redshiftChart) {
+                redshiftChart.resetZoom();
+            }
         }
 
         // Update all charts when year changes
