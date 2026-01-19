@@ -312,6 +312,7 @@
         }
         
         #instructions.collapsed h3,
+        #instructions.collapsed h4,
         #instructions.collapsed ul {
             display: none;
         }
@@ -494,6 +495,7 @@
             <!-- Center column: Large sky map spanning 3 rows -->
             <div class="chart-panel skymap-large" id="skymap-panel">
                 <div class="chart-title">All-Sky Map</div>
+                <button id="toggleAxisLabels" onclick="toggleAxisLabels()" style="position: absolute; top: 8px; left: 8px; background: #3a4a7a; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; z-index: 10;" title="Toggle RA/Dec labels">RA/Dec Labels</button>
                 <canvas id="skymap"></canvas>
                 <div id="loading">
                     <div class="spinner"></div>
@@ -506,20 +508,22 @@
                 <div id="instructions">
                     <button class="toggle-btn" onclick="toggleInstructions()">−</button>
                     <h3>How to Use</h3>
-                    <h4 style="color: #90caf9; font-size: 13px; margin: 12px 0 8px 0;">All-Sky Map (center)</h4>
+                    <h4 style="color: #90caf9; font-size: 13px; margin: 12px 0 8px 0;">General Controls:</h4>
                     <ul>
                         <li><strong>Hover</strong> over any point to view system details</li>
+                        <li><strong>Scroll</strong> to zoom in/out</li>
+                        <li>Use <strong>slider</strong> to step through discoveries by year</li>
+                    </ul>
+                    <h4 style="color: #90caf9; font-size: 13px; margin: 12px 0 8px 0;">All-Sky Map (center)</h4>
+                    <ul>
+                        <li>Use <strong>controls</strong> to change projection, point size, color scheme, and axes labels</li>
                         <li><strong>Click</strong> a point to pin the tooltip (click × to close)</li>
                         <li>Click <strong>"View Paper"</strong> in tooltips to access reference</li>
                         <li><strong>Click</strong> a legend item to highlight that subset</li>
                         <li><strong>Drag</strong> to pan around the sky map</li>
-                        <li><strong>Scroll</strong> to zoom in/out</li>
-                        <li>Use <strong>controls</strong> to change projection, point size, and color scheme</li>
-                        <li>Use <strong>slider</strong> to step through discoveries by year</li>
                     </ul>
                     <h4 style="color: #90caf9; font-size: 13px; margin: 12px 0 8px 0;">Redshift Plot (bottom left)</h4>
                     <ul>
-                        <li><strong>Scroll</strong> to zoom in/out</li>
                         <li><strong>Drag</strong> to select a region to zoom into</li>
                         <li><strong>Pan</strong> by dragging when zoomed in</li>
                         <li>Click <strong>"Reset"</strong> button to restore original view</li>
@@ -529,15 +533,31 @@
 
             <!-- Right column: Info panels -->
             <div class="info-column">
-                <div class="info-panel spacer"></div>
-
                 <div class="info-panel">
-                    <!-- <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #64b5f6; font-weight: 600;">Links</h4> -->
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <a href="https://sites.google.com/view/agelsurvey/" target="_blank" style="color: #64b5f6; text-decoration: none; font-size: 16px;">AGEL Survey Website</a>
-                        <a href="https://ui.adsabs.harvard.edu/public-libraries/JJ8PjA_3RHW3DRuWnn4laQ" target="_blank" style="color: #64b5f6; text-decoration: none; font-size: 16px;">ADS Paper Library</a>
-                    </div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 24px; color: #64b5f6; font-weight: 600;">Links</h4>
+                    <ul style="padding-left: 24px;">
+                        <li style="margin-bottom: 10px;">
+                            <a href="https://ui.adsabs.harvard.edu/public-libraries/JJ8PjA_3RHW3DRuWnn4laQ" target="_blank"
+                            style="color: #64b5f6; text-decoration: none; font-size: 16px;">
+                                ADS library of papers linked to each system
+                            </a>
+                        </li>
+                        <li style="margin-bottom: 10px;">
+                            <a href="https://sites.google.com/view/agelsurvey/" target="_blank"
+                            style="color: #64b5f6; text-decoration: none; font-size: 16px;">
+                                AGEL Survey Website
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://doct3rwatson.github.io/Lensing-DB-redshifts/" target="_blank"
+                            style="color: #64b5f6; text-decoration: none; font-size: 16px;">
+                                More detailed version of the redshift plot and histograms (left column panels)
+                            </a>
+                        </li>
+                    </ul>
                 </div>
+
+                <div class="info-panel spacer"></div>
 
                 <div class="info-panel" id="year-display">
                     <div class="year-label">Year: <span id="yearDisplayValue">2025</span></div>
@@ -576,7 +596,8 @@
             projection: 'mollweide',
             pointSize: 4,
             colorScheme: 'type',
-            selectedYear: 2025
+            selectedYear: 2025,
+            showAxisLabels: false  // RA/Dec labels off by default
         };
 
         let minYear = 1979;
@@ -882,7 +903,7 @@
         function drawGrid() {
             ctx.strokeStyle = 'rgba(100, 181, 246, 0.15)';
             ctx.lineWidth = 1;
-            
+
             // RA lines (every 30 degrees)
             for (let ra = 0; ra <= 360; ra += 30) {
                 ctx.beginPath();
@@ -890,7 +911,7 @@
                 for (let dec = -90; dec <= 90; dec += 2) {
                     const proj = project(ra, dec);
                     const screen = worldToScreen(proj.x, proj.y);
-                    
+
                     if (firstPoint) {
                         ctx.moveTo(screen.x, screen.y);
                         firstPoint = false;
@@ -900,7 +921,7 @@
                 }
                 ctx.stroke();
             }
-            
+
             // Dec lines (every 30 degrees)
             for (let dec = -60; dec <= 60; dec += 30) {
                 ctx.beginPath();
@@ -908,7 +929,7 @@
                 for (let ra = 0; ra <= 360; ra += 2) {
                     const proj = project(ra, dec);
                     const screen = worldToScreen(proj.x, proj.y);
-                    
+
                     if (firstPoint) {
                         ctx.moveTo(screen.x, screen.y);
                         firstPoint = false;
@@ -918,7 +939,7 @@
                 }
                 ctx.stroke();
             }
-            
+
             // Equator
             ctx.strokeStyle = 'rgba(100, 181, 246, 0.3)';
             ctx.lineWidth = 2;
@@ -927,7 +948,7 @@
             for (let ra = 0; ra <= 360; ra += 1) {
                 const proj = project(ra, 0);
                 const screen = worldToScreen(proj.x, proj.y);
-                
+
                 if (firstPoint) {
                     ctx.moveTo(screen.x, screen.y);
                     firstPoint = false;
@@ -936,6 +957,49 @@
                 }
             }
             ctx.stroke();
+
+            // Draw axis labels if enabled
+            if (config.showAxisLabels) {
+                ctx.font = '11px Segoe UI, sans-serif';
+                ctx.fillStyle = 'rgba(100, 181, 246, 0.8)';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // RA labels along the equator (every 30 degrees, but show as hours: 0h, 2h, etc.)
+                for (let ra = 0; ra <= 330; ra += 30) {
+                    const proj = project(ra, 0);
+                    const screen = worldToScreen(proj.x, proj.y);
+                    const hours = Math.round(ra / 15);  // Convert degrees to hours
+                    ctx.fillText(`${hours}h`, screen.x, screen.y + 15);
+                }
+
+                // Dec labels along the central meridian (RA = 180)
+                for (let dec = -60; dec <= 60; dec += 30) {
+                    if (dec === 0) continue;  // Skip equator label to avoid clutter
+                    const proj = project(180, dec);
+                    const screen = worldToScreen(proj.x, proj.y);
+                    const label = dec > 0 ? `+${dec}°` : `${dec}°`;
+                    ctx.fillText(label, screen.x - 20, screen.y);
+                }
+
+                // Add axis titles
+                ctx.font = '12px Segoe UI, sans-serif';
+                ctx.fillStyle = 'rgba(100, 181, 246, 0.9)';
+
+                // RA title at bottom center
+                const raProj = project(180, 0);
+                const raScreen = worldToScreen(raProj.x, raProj.y);
+                ctx.fillText('RA', raScreen.x, raScreen.y + 35);
+
+                // Dec title on left side
+                const decProj = project(180, 0);
+                const decScreen = worldToScreen(decProj.x, decProj.y);
+                ctx.save();
+                ctx.translate(decScreen.x - 45, decScreen.y);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText('Dec', 0, 0);
+                ctx.restore();
+            }
         }
         
         // Check if a point matches the current highlight filter
@@ -1291,7 +1355,7 @@
         function toggleInstructions() {
             const instructions = document.getElementById('instructions');
             const btn = instructions.querySelector('.toggle-btn');
-            
+
             if (instructions.classList.contains('collapsed')) {
                 instructions.classList.remove('collapsed');
                 btn.textContent = '−';
@@ -1300,7 +1364,20 @@
                 btn.textContent = '+';
             }
         }
-        
+
+        function toggleAxisLabels() {
+            config.showAxisLabels = !config.showAxisLabels;
+            const btn = document.getElementById('toggleAxisLabels');
+            if (config.showAxisLabels) {
+                btn.style.background = '#64b5f6';
+                btn.style.color = '#0a0e27';
+            } else {
+                btn.style.background = '#3a4a7a';
+                btn.style.color = '#fff';
+            }
+            drawSkyMap();
+        }
+
         // Event handlers
         canvas.addEventListener('mousedown', (e) => {
             const point = findPointAtMouse(e.clientX, e.clientY);
@@ -1377,7 +1454,7 @@
             document.getElementById('pointSizeValue').textContent = config.pointSize;
             drawSkyMap();
         });
-        
+
         document.getElementById('colorScheme').addEventListener('change', (e) => {
             config.colorScheme = e.target.value;
             highlightFilter = null;  // Clear highlight filter when changing color scheme
