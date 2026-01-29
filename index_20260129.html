@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmed Gravitational Lenses — Interactive All-Sky Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #header {
+            padding: 20px;
+            background: rgba(10, 14, 39, 0.9);
+            border-bottom: 2px solid #3a4a7a;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        #header h1 {
+            font-size: 28px;
+            color: #64b5f6;
+            margin-bottom: 8px;
+        }
+        
+        #header p {
+            font-size: 14px;
+            color: #aaa;
+        }
+        
+        #controls {
+            padding: 15px 20px;
+            background: rgba(26, 31, 58, 0.95);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #3a4a7a;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-group label {
+            font-size: 13px;
+            color: #bbb;
+        }
+        
+        select, input[type="range"] {
+            background: #2a3555;
+            color: #fff;
+            border: 1px solid #4a5a8a;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        input[type="range"] {
+            width: 150px;
+        }
+        
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+        
+        canvas:active {
+            cursor: grabbing;
+        }
+        
+        #tooltip {
+            position: fixed;
+            background: rgba(20, 25, 45, 0.98);
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            pointer-events: auto;
+            display: none;
+            max-width: 400px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+            border: 1px solid #4a5a8a;
+            z-index: 1000;
+        }
+
+        #tooltip.pinned {
+            border: 2px solid #64b5f6;
+        }
+        
+        #tooltip .close-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #3a4a7a;
+            color: #fff;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            display: none;
+        }
+        
+        #tooltip.pinned .close-btn {
+            display: block;
+        }
+        
+        #tooltip .close-btn:hover {
+            background: #4a5a9a;
+        }
+        
+        #tooltip h3 {
+            margin: 0 0 10px 0;
+            color: #64b5f6;
+            font-size: 16px;
+            border-bottom: 1px solid #3a4a7a;
+            padding-bottom: 8px;
+        }
+        
+        #tooltip .info-row {
+            margin: 6px 0;
+            font-size: 13px;
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 10px;
+        }
+        
+        #tooltip .info-label {
+            color: #999;
+            font-weight: 500;
+        }
+        
+        #tooltip .info-value {
+            color: #e0e0e0;
+        }
+        
+        #tooltip a {
+            color: #64b5f6;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        #tooltip a:hover {
+            color: #90caf9;
+            text-decoration: underline;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #64b5f6;
+            font-size: 18px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(100, 181, 246, 0.1);
+            border-top: 4px solid #64b5f6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #stats {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(20, 25, 45, 0.9);
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #bbb;
+            border: 1px solid #3a4a7a;
+        }
+
+        #year-display {
+            background: rgba(20, 25, 45, 0.95);
+            padding: 15px 20px;
+            border-radius: 6px;
+            border: 1px solid #3a4a7a;
+            margin: 0 20px;
+            text-align: center;
+        }
+
+        #year-display .year-label {
+            font-size: 24px;
+            color: #64b5f6;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #year-display .year-slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #year-display #yearSlider {
+            width: 200px;
+        }
+
+        #year-display #yearValue {
+            color: #e0e0e0;
+            font-size: 14px;
+            min-width: 40px;
+        }
+
+        #colorbar {
+            background: transparent;
+            padding: 0;
+            border: none;
+            min-width: auto;
+        }
+
+        #instructions {
+            position: absolute;
+            top: 45px;
+            right: 15px;
+            background: rgba(20, 25, 45, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #3a4a7a;
+            max-width: 300px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            z-index: 100;
+        }
+        
+        #instructions h3 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            color: #64b5f6;
+            border-bottom: 1px solid #3a4a7a;
+            padding-bottom: 8px;
+        }
+        
+        #instructions ul {
+            margin: 0;
+            padding-left: 20px;
+            list-style-type: none;
+        }
+        
+        #instructions li {
+            margin: 10px 0;
+            font-size: 13px;
+            color: #ccc;
+            line-height: 1.5;
+            position: relative;
+        }
+        
+        #instructions li:before {
+            content: "▸";
+            color: #64b5f6;
+            position: absolute;
+            left: -15px;
+        }
+        
+        #instructions .toggle-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #3a4a7a;
+            color: #fff;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+        
+        #instructions .toggle-btn:hover {
+            background: #4a5a9a;
+        }
+        
+        #instructions.collapsed {
+            padding: 15px;
+        }
+        
+        #instructions.collapsed h3,
+        #instructions.collapsed h4,
+        #instructions.collapsed ul {
+            display: none;
+        }
+        
+        #instructions.collapsed .toggle-btn {
+            position: static;
+        }
+        
+        #colorbar h4 {
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            color: #64b5f6;
+            font-weight: 600;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .legend-item:hover {
+            background-color: rgba(100, 181, 246, 0.2);
+        }
+
+        .legend-item.active {
+            background-color: rgba(100, 181, 246, 0.4);
+            border: 1px solid #64b5f6;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .legend-gradient {
+            height: 20px;
+            border-radius: 4px;
+            margin: 8px 0;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: 400px 1fr 350px;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 10px;
+            flex: 1;
+            padding: 10px;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .chart-panel {
+            background: rgba(20, 25, 45, 0.7);
+            border: 1px solid #3a4a7a;
+            border-radius: 6px;
+            padding: 15px;
+            padding-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-panel canvas {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .chart-panel.skymap-large {
+            grid-column: 2;
+            grid-row: 1 / 4;
+        }
+
+        .info-column {
+            grid-column: 3;
+            grid-row: 1 / 4;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        .info-panel {
+            background: rgba(20, 25, 45, 0.7);
+            border: 1px solid #3a4a7a;
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        .info-panel.spacer {
+            flex: 1;
+            background: transparent;
+            border: none;
+        }
+
+        .chart-title {
+            color: #64b5f6;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+</head>
+<body>
+    <div id="container">
+        <div id="header">
+            <h1>Confirmed Gravitational Lenses — Interactive All-Sky Map</h1>
+            <p>Interactive visualization of spectroscopically confirmed gravitational lensing systems</p>
+        </div>
+        
+        <div id="controls">
+            <div class="control-group">
+                <label for="projection">Projection:</label>
+                <select id="projection">
+                    <option value="mollweide">Mollweide</option>
+                    <option value="aitoff">Aitoff</option>
+                    <option value="hammer">Hammer</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="pointSize">Point Size:</label>
+                <input type="range" id="pointSize" min="2" max="10" value="4" step="0.5">
+                <span id="pointSizeValue">4</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="colorScheme">Color by:</label>
+                <select id="colorScheme">
+                    <option value="type">Source Type</option>
+                    <option value="survey">Survey</option>
+                    <option value="source_z">Source Redshift</option>
+                    <option value="lens_z">Deflector Redshift</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>RA/Dec Labels:</label>
+                <button id="toggleAxisLabels" onclick="toggleAxisLabels()" style="background: #3a4a7a; color: #fff; border: none; padding: 5px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;" title="Toggle RA/Dec labels">Off</button>
+            </div>
+        </div>
+
+        <div class="charts-container">
+            <!-- Left column: 3 statistical plots -->
+            <div class="chart-panel">
+                <div class="chart-title">Cumulative Fractional Total</div>
+                <canvas id="fractionChart"></canvas>
+            </div>
+
+            <div class="chart-panel">
+                <div class="chart-title">Systems Per Year</div>
+                <canvas id="countChart"></canvas>
+            </div>
+
+            <div class="chart-panel" style="position: relative;">
+                <div class="chart-title">z<sub>source</sub> vs z<sub>deflector</sub></div>
+                <button onclick="resetRedshiftZoom()" style="position: absolute; top: 8px; right: 8px; background: #3a4a7a; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; z-index: 10;" title="Reset zoom">Reset</button>
+                <canvas id="redshiftChart"></canvas>
+            </div>
+
+            <!-- Center column: Large sky map spanning 3 rows -->
+            <div class="chart-panel skymap-large" id="skymap-panel">
+                <div class="chart-title">All-Sky Map</div>
+                <canvas id="skymap"></canvas>
+                <div id="loading">
+                    <div class="spinner"></div>
+                    <div>Loading lensing data...</div>
+                </div>
+                <div id="tooltip">
+                    <button class="close-btn" onclick="unpinTooltip()">×</button>
+                </div>
+                <div id="stats"></div>
+                <div id="instructions">
+                    <button class="toggle-btn" onclick="toggleInstructions()">−</button>
+                    <h3>How to Use</h3>
+                    <h4 style="color: #90caf9; font-size: 13px; margin: 12px 0 8px 0;">General Controls:</h4>
+                    <ul>
+                        <li><strong>Hover</strong> over any point to view system details</li>
+                        <li><strong>Scroll</strong> to zoom in/out</li>
+                        <li>Use <strong>slider</strong> to step through discoveries by year</li>
+                    </ul>
+                    <h4 style="color: #90caf9; font-size: 13px; margin: 12px 0 8px 0;">All-Sky Map (center)</h4>
+                    <ul>
+                        <li>Use <strong>controls</strong> to change projection, point size, color scheme, and axes labels</li>
+                        <li><strong>Click</strong> a point to pin the tooltip (click × to close)</li>
+                        <li>Click <strong>"View Paper"</strong> in tooltips to access reference</li>
+                        <li><strong>Click</strong> a legend item to highlight that subset</li>
+                        <li><strong>Drag</strong> to pan around the sky map</li>
+                    </ul>
+                    <h4 style="color: #90caf9; font-size: 13px; margin: 12px 0 8px 0;">Redshift Plot (bottom left)</h4>
+                    <ul>
+                        <li><strong>Drag</strong> to select a region to zoom into</li>
+                        <li><strong>Pan</strong> by dragging when zoomed in</li>
+                        <li>Click <strong>"Reset"</strong> button to restore original view</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Right column: Info panels -->
+            <div class="info-column">
+                <div class="info-panel">
+                    <h4 style="margin: 0 0 10px 0; font-size: 24px; color: #64b5f6; font-weight: 600;">Links</h4>
+                    <ul style="padding-left: 24px;">
+                        <li style="margin-bottom: 10px;">
+                            <a href="https://ui.adsabs.harvard.edu/public-libraries/HB5WWHhdSf6FlHyOPV6DYg" target="_blank"
+                            style="color: #64b5f6; text-decoration: none; font-size: 16px;">
+                                ADS library of papers linked to each system
+                            </a>
+                        </li>
+                        <li style="margin-bottom: 10px;">
+                            <a href="https://sites.google.com/view/agelsurvey/" target="_blank"
+                            style="color: #64b5f6; text-decoration: none; font-size: 16px;">
+                                AGEL Survey Website
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://doct3rwatson.github.io/Lensing-DB-redshifts/" target="_blank"
+                            style="color: #64b5f6; text-decoration: none; font-size: 16px;">
+                                More detailed version of the redshift plot and histograms (left column panels)
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="info-panel spacer"></div>
+
+                <div class="info-panel" id="year-display">
+                    <div class="year-label">Year: <span id="yearDisplayValue">2025</span></div>
+                    <div class="year-slider-container">
+                        <input type="range" id="yearSlider" min="1979" max="2025" value="2025" step="1">
+                        <span id="yearValue">2025</span>
+                    </div>
+                </div>
+
+                <div class="info-panel">
+                    <div id="colorbar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script>
+        const canvas = document.getElementById('skymap');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('tooltip');
+        const loading = document.getElementById('loading');
+        const stats = document.getElementById('stats');
+        
+        let lensData = [];
+        let transform = { scale: 1, offsetX: 0, offsetY: 0 };
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let hoveredPoint = null;
+        let pinnedPoint = null;
+        let isTooltipPinned = false;
+        
+        // Configuration
+        let config = {
+            projection: 'mollweide',
+            pointSize: 4,
+            colorScheme: 'type',
+            selectedYear: 2025,
+            showAxisLabels: false  // RA/Dec labels off by default
+        };
+
+        let minYear = 1979;
+        let maxYear = 2025;
+
+        // Color schemes based on Source type - chosen for visibility against dark blue background
+        const sourceTypeColors = {
+            'Galaxy': '#FF6B6B',      // Coral red - warm and vibrant for galaxy sources
+            'Quasar': '#4ECDC4',      // Bright teal - cool and distinct for quasar sources
+            'Unknown': '#FFE66D',     // Soft yellow - neutral and visible for unknown
+        };
+
+        // Survey colors - enhanced for visibility against dark blue background while keeping similar hues
+        const surveyColors = {};
+        const surveyColorPalette = {
+            'CLASS': "#AAE0FF",        // Brighter cyan (was #88CCEE)
+            'SLACS': "#66DDBB",        // Brighter teal (was #44AA99)
+            'BELLS': "#44DD66",        // Brighter green (was #117733)
+            'SL2S': "#DDDD55",         // Brighter yellow-olive (was #999933)
+            'CASSOWARY': '#FFE699',    // Brighter tan/gold (was #DDCC77)
+            'AGEL': "#7766FF",         // Brighter purple-blue (was #332288)
+            'Serendipitous': '#DD4477', // Brighter magenta (was #882255)
+            'Others': '#BBBBBB'        // Lighter gray (was gray)
+        };
+
+        // Histogram colors for source types (matching reference)
+        const histColors = {
+            'Quasar': '#777777',   // Gray
+            'Galaxy': '#000000',   // Black
+            'Unknown': '#CCCCCC'   // Light gray
+        };
+
+        // Chart instances
+        let fractionChart = null;
+        let countChart = null;
+        let redshiftChart = null;
+
+        // Yearly statistics data
+        let yearlyStats = null;
+
+        // Max y-value for count chart (computed once from full data)
+        let countChartMaxY = null;
+
+        // Legend highlight filter (null = show all, or a category name to highlight)
+        let highlightFilter = null;
+
+        function getSourceType(systemType) {
+            if (!systemType) return 'Unknown';
+            systemType = systemType.trim().toLowerCase();
+            
+            // Extract the source type (second part after the dash)
+            // e.g., "Galaxy-Quasar" -> source is "Quasar"
+            //       "Gal-QSO" -> source is "Quasar"
+            if (systemType.includes('-')) {
+                const parts = systemType.split('-');
+                const sourceType = parts[parts.length - 1].trim();
+                
+                if (sourceType.includes('qso') || sourceType.includes('quasar')) {
+                    return 'Quasar';
+                } else if (sourceType.includes('gal') || sourceType.includes('galaxy')) {
+                    return 'Galaxy';
+                } else if (sourceType.includes('star')) {
+                    return 'Galaxy'; // Treating stars as galaxy-type sources
+                }
+            }
+            
+            // If no dash, check the whole string
+            if (systemType.includes('qso') || systemType.includes('quasar')) {
+                return 'Quasar';
+            } else if (systemType.includes('gal') || systemType.includes('galaxy')) {
+                return 'Galaxy';
+            } else if (systemType.includes('cluster')) {
+                return 'Galaxy'; // Clusters are galaxy-type
+            }
+            
+            return 'Unknown';
+        }
+
+        function isAGELSource(survey) {
+            if (!survey) return false;
+            return survey.trim().toLowerCase().includes('agel');
+        }
+
+        // Classify survey based on priority order - handles multiple surveys in one field
+        function classifySurvey(surveyStr) {
+            if (!surveyStr) return 'Others';
+
+            const surveyLower = surveyStr.toLowerCase();
+
+            // Priority order: check for each known survey
+            // This handles cases where multiple surveys are listed (e.g., "CASSOWARY, SGAS")
+            if (surveyLower.includes('class')) return 'CLASS';
+            if (surveyLower.includes('slacs')) return 'SLACS';
+            if (surveyLower.includes('bells')) return 'BELLS';
+            if (surveyLower.includes('sl2s')) return 'SL2S';
+            if (surveyLower.includes('cassowary')) return 'CASSOWARY';
+            if (surveyLower.includes('agel')) return 'AGEL';
+            if (surveyLower.includes('serendipitous')) return 'Serendipitous';
+
+            // If none of the above, classify as Others
+            return 'Others';
+        }
+
+        function normalizeSystemType(type) {
+            if (!type) return 'Unknown';
+            type = type.trim();
+            
+            // Normalize common variations
+            const typeMap = {
+                'gal-gal': 'Galaxy-Galaxy',
+                'galaxy-galaxy': 'Galaxy-Galaxy',
+                'gal-qso': 'Galaxy-Quasar',
+                'galaxy-quasar': 'Galaxy-Quasar',
+                'qso-qso': 'Quasar-Quasar',
+                'quasar-quasar': 'Quasar-Quasar',
+                'galaxy-star': 'Galaxy-Star',
+                'gal-star': 'Galaxy-Star',
+                'cluster': 'Cluster'
+            };
+            
+            const normalized = typeMap[type.toLowerCase()];
+            return normalized || type;
+        }
+        
+        function resizeCanvas() {
+            const container = document.getElementById('skymap-panel');
+            canvas.width = container.clientWidth - 30; // Account for padding
+            canvas.height = container.clientHeight - 30;
+            drawSkyMap();
+        }
+        
+        // Projection functions
+        function mollweideProjection(ra, dec) {
+            const lambda = (ra - 180) * Math.PI / 180;
+            const phi = dec * Math.PI / 180;
+            
+            let theta = phi;
+            for (let i = 0; i < 10; i++) {
+                const delta = -(theta + Math.sin(theta) - Math.PI * Math.sin(phi)) / (1 + Math.cos(theta));
+                theta += delta;
+                if (Math.abs(delta) < 1e-6) break;
+            }
+            
+            const x = (2 * Math.sqrt(2) / Math.PI) * lambda * Math.cos(theta / 2);
+            const y = Math.sqrt(2) * Math.sin(theta / 2);
+            
+            return { x, y };
+        }
+        
+        function aitoffProjection(ra, dec) {
+            const lambda = (ra - 180) * Math.PI / 180;
+            const phi = dec * Math.PI / 180;
+            
+            const alpha = Math.acos(Math.cos(phi) * Math.cos(lambda / 2));
+            const sinc = alpha < 0.001 ? 1 : Math.sin(alpha) / alpha;
+            
+            const x = 2 * Math.cos(phi) * Math.sin(lambda / 2) / sinc;
+            const y = Math.sin(phi) / sinc;
+            
+            return { x, y };
+        }
+        
+        function hammerProjection(ra, dec) {
+            const lambda = (ra - 180) * Math.PI / 180;
+            const phi = dec * Math.PI / 180;
+            
+            const z = Math.sqrt(1 + Math.cos(phi) * Math.cos(lambda / 2));
+            const x = 2 * Math.sqrt(2) * Math.cos(phi) * Math.sin(lambda / 2) / z;
+            const y = Math.sqrt(2) * Math.sin(phi) / z;
+            
+            return { x, y };
+        }
+        
+        function project(ra, dec) {
+            switch (config.projection) {
+                case 'aitoff':
+                    return aitoffProjection(ra, dec);
+                case 'hammer':
+                    return hammerProjection(ra, dec);
+                default:
+                    return mollweideProjection(ra, dec);
+            }
+        }
+        
+        function worldToScreen(x, y) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = Math.min(canvas.width, canvas.height) / 4.5 * transform.scale;
+            
+            return {
+                x: centerX + x * scale + transform.offsetX,
+                y: centerY - y * scale + transform.offsetY
+            };
+        }
+        
+        function screenToWorld(screenX, screenY) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = Math.min(canvas.width, canvas.height) / 4.5 * transform.scale;
+            
+            return {
+                x: (screenX - centerX - transform.offsetX) / scale,
+                y: -(screenY - centerY - transform.offsetY) / scale
+            };
+        }
+        
+        function getColorForPoint(point) {
+            if (config.colorScheme === 'type') {
+                return sourceTypeColors[point.source_type] || sourceTypeColors['Unknown'];
+            } else if (config.colorScheme === 'survey') {
+                return surveyColors[point.survey] || '#64b5f6';
+            } else if (config.colorScheme === 'source_z') {
+                const z = parseFloat(point.source_z) || 0;
+                const hue = Math.min(z / 5 * 240, 240);
+                return `hsl(${240 - hue}, 70%, 60%)`;
+            } else if (config.colorScheme === 'lens_z') {
+                const z = parseFloat(point.lens_z) || 0;
+                const hue = Math.min(z / 2 * 240, 240);
+                return `hsl(${240 - hue}, 70%, 60%)`;
+            }
+            return '#64b5f6';
+        }
+
+        function getMarkerType(point) {
+            // AGEL sources get star markers
+            if (point.is_agel) {
+                return 'star';
+            }
+            // Otherwise use source type
+            return point.source_type;
+        }
+
+        function drawMarker(ctx, x, y, size, markerType) {
+            ctx.save();
+            
+            if (markerType === 'Quasar') {
+                // Draw asterisk (X + plus)
+                ctx.lineWidth = 2;
+                
+                // Draw X
+                ctx.beginPath();
+                ctx.moveTo(x - size, y - size);
+                ctx.lineTo(x + size, y + size);
+                ctx.moveTo(x + size, y - size);
+                ctx.lineTo(x - size, y + size);
+                ctx.stroke();
+                
+                // Draw +
+                ctx.beginPath();
+                ctx.moveTo(x - size, y);
+                ctx.lineTo(x + size, y);
+                ctx.moveTo(x, y - size);
+                ctx.lineTo(x, y + size);
+                ctx.stroke();
+                
+            } else if (markerType === 'Galaxy') {
+                // Filled circle
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, 2 * Math.PI);
+                ctx.fill();
+                
+            } else if (markerType === 'star') {
+                // Star shape (5-pointed) for AGEL - larger and more visible
+                const spikes = 5;
+                const outerRadius = size * 1.8;  // Increased from size to 1.8x
+                const innerRadius = outerRadius / 2.5;
+
+                ctx.beginPath();
+                for (let i = 0; i < spikes * 2; i++) {
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const angle = (i * Math.PI) / spikes - Math.PI / 2;
+                    const px = x + Math.cos(angle) * radius;
+                    const py = y + Math.sin(angle) * radius;
+
+                    if (i === 0) {
+                        ctx.moveTo(px, py);
+                    } else {
+                        ctx.lineTo(px, py);
+                    }
+                }
+                ctx.closePath();
+
+                // Fill with lighter purple
+                ctx.fillStyle = '#A78BFA';  // Light purple
+                ctx.fill();
+
+                // Add white border for extra visibility
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+            } else {
+                // Unknown - empty circle
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, 2 * Math.PI);
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(100, 181, 246, 0.15)';
+            ctx.lineWidth = 1;
+
+            // RA lines (every 30 degrees)
+            for (let ra = 0; ra <= 360; ra += 30) {
+                ctx.beginPath();
+                let firstPoint = true;
+                for (let dec = -90; dec <= 90; dec += 2) {
+                    const proj = project(ra, dec);
+                    const screen = worldToScreen(proj.x, proj.y);
+
+                    if (firstPoint) {
+                        ctx.moveTo(screen.x, screen.y);
+                        firstPoint = false;
+                    } else {
+                        ctx.lineTo(screen.x, screen.y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            // Dec lines (every 30 degrees)
+            for (let dec = -60; dec <= 60; dec += 30) {
+                ctx.beginPath();
+                let firstPoint = true;
+                for (let ra = 0; ra <= 360; ra += 2) {
+                    const proj = project(ra, dec);
+                    const screen = worldToScreen(proj.x, proj.y);
+
+                    if (firstPoint) {
+                        ctx.moveTo(screen.x, screen.y);
+                        firstPoint = false;
+                    } else {
+                        ctx.lineTo(screen.x, screen.y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            // Equator
+            ctx.strokeStyle = 'rgba(100, 181, 246, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            let firstPoint = true;
+            for (let ra = 0; ra <= 360; ra += 1) {
+                const proj = project(ra, 0);
+                const screen = worldToScreen(proj.x, proj.y);
+
+                if (firstPoint) {
+                    ctx.moveTo(screen.x, screen.y);
+                    firstPoint = false;
+                } else {
+                    ctx.lineTo(screen.x, screen.y);
+                }
+            }
+            ctx.stroke();
+
+            // Draw axis labels if enabled
+            if (config.showAxisLabels) {
+                ctx.font = '11px Segoe UI, sans-serif';
+                ctx.fillStyle = 'rgba(100, 181, 246, 0.8)';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // RA labels along the equator (every 30 degrees, but show as hours: 0h, 2h, etc.)
+                for (let ra = 0; ra <= 330; ra += 30) {
+                    const proj = project(ra, 0);
+                    const screen = worldToScreen(proj.x, proj.y);
+                    const hours = Math.round(ra / 15);  // Convert degrees to hours
+                    ctx.fillText(`${hours}h`, screen.x, screen.y + 15);
+                }
+
+                // Dec labels along the central meridian (RA = 180)
+                for (let dec = -60; dec <= 60; dec += 30) {
+                    if (dec === 0) continue;  // Skip equator label to avoid clutter
+                    const proj = project(180, dec);
+                    const screen = worldToScreen(proj.x, proj.y);
+                    const label = dec > 0 ? `+${dec}°` : `${dec}°`;
+                    ctx.fillText(label, screen.x - 20, screen.y);
+                }
+
+                // Add axis titles
+                ctx.font = '12px Segoe UI, sans-serif';
+                ctx.fillStyle = 'rgba(100, 181, 246, 0.9)';
+
+                // RA title at bottom center
+                const raProj = project(180, 0);
+                const raScreen = worldToScreen(raProj.x, raProj.y);
+                ctx.fillText('RA', raScreen.x, raScreen.y + 35);
+
+                // Dec title on left side
+                const decProj = project(180, 0);
+                const decScreen = worldToScreen(decProj.x, decProj.y);
+                ctx.save();
+                ctx.translate(decScreen.x - 45, decScreen.y);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText('Dec', 0, 0);
+                ctx.restore();
+            }
+        }
+        
+        // Check if a point matches the current highlight filter
+        function matchesHighlightFilter(point) {
+            if (!highlightFilter) return true;  // No filter, all match
+
+            if (config.colorScheme === 'type') {
+                // For type coloring, check source_type or AGEL status
+                if (highlightFilter === 'AGEL') {
+                    return point.is_agel;
+                }
+                return point.source_type === highlightFilter;
+            } else if (config.colorScheme === 'survey') {
+                // For survey coloring, check survey name
+                return point.survey === highlightFilter;
+            }
+            return true;
+        }
+
+        function drawSkyMap() {
+            ctx.fillStyle = '#0a0e27';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawGrid();
+
+            // Filter points by year
+            const visiblePoints = lensData.filter(point => point.year <= config.selectedYear);
+
+            // Draw non-highlighted points first (dimmed)
+            if (highlightFilter) {
+                visiblePoints.filter(point => !matchesHighlightFilter(point)).forEach(point => {
+                    const proj = project(point.ra, point.dec);
+                    const screen = worldToScreen(proj.x, proj.y);
+
+                    // Use dimmed color
+                    ctx.globalAlpha = 0.15;
+                    const color = getColorForPoint(point);
+                    ctx.fillStyle = color;
+                    ctx.strokeStyle = color;
+
+                    const markerType = getMarkerType(point);
+
+                    if (config.colorScheme === 'type' || config.colorScheme === 'survey') {
+                        drawMarker(ctx, screen.x, screen.y, config.pointSize, markerType);
+                    } else {
+                        ctx.beginPath();
+                        ctx.arc(screen.x, screen.y, config.pointSize, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+                    ctx.globalAlpha = 1.0;
+                });
+            }
+
+            // Draw highlighted points (or all points if no filter)
+            const pointsToDraw = highlightFilter
+                ? visiblePoints.filter(point => matchesHighlightFilter(point))
+                : visiblePoints;
+
+            pointsToDraw.forEach(point => {
+                const proj = project(point.ra, point.dec);
+                const screen = worldToScreen(proj.x, proj.y);
+
+                const color = getColorForPoint(point);
+                ctx.fillStyle = color;
+                ctx.strokeStyle = color;
+
+                const markerType = getMarkerType(point);
+
+                // Use different markers for system type or survey coloring
+                if (config.colorScheme === 'type' || config.colorScheme === 'survey') {
+                    drawMarker(ctx, screen.x, screen.y, config.pointSize, markerType);
+                } else {
+                    // For redshift coloring, use simple filled circles
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, config.pointSize, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+
+                // Highlight if hovered or pinned
+                if (hoveredPoint === point || pinnedPoint === point) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(screen.x, screen.y, config.pointSize + 3, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+            });
+
+            // Update stats
+            const highlightedCount = highlightFilter ? pointsToDraw.length : visiblePoints.length;
+            const highlightText = highlightFilter ? ` | Highlighted: ${highlightFilter} (${highlightedCount})` : '';
+            stats.innerHTML = `Total systems: ${visiblePoints.length} / ${lensData.length} | Projection: ${config.projection} | Year: ${config.selectedYear}${highlightText}`;
+        }
+        
+        function findPointAtMouse(mouseX, mouseY) {
+            const threshold = config.pointSize + 5;
+            const canvasRect = canvas.getBoundingClientRect();
+            const canvasX = mouseX - canvasRect.left;
+            const canvasY = mouseY - canvasRect.top;
+
+            // Only check visible points (filtered by year)
+            const visiblePoints = lensData.filter(point => point.year <= config.selectedYear);
+
+            for (let point of visiblePoints) {
+                const proj = project(point.ra, point.dec);
+                const screen = worldToScreen(proj.x, proj.y);
+
+                const dx = screen.x - canvasX;
+                const dy = screen.y - canvasY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < threshold) {
+                    return point;
+                }
+            }
+            return null;
+        }
+        
+        function showTooltip(point, x, y) {
+            const paperLink = point.ads_link || point.paper_link || '#';
+            const hasPaper = paperLink !== '#';
+            
+            tooltip.innerHTML = `
+                <button class="close-btn" onclick="unpinTooltip()">×</button>
+                <h3>${point.system_name || 'Unknown System'}</h3>
+                <div class="info-row">
+                    <span class="info-label">RA:</span>
+                    <span class="info-value">${point.ra.toFixed(4)}°</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Dec:</span>
+                    <span class="info-value">${point.dec.toFixed(4)}°</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Source Redshift:</span>
+                    <span class="info-value">${point.source_z || 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Deflector Redshift:</span>
+                    <span class="info-value">${point.lens_z || 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">System Type:</span>
+                    <span class="info-value">${point.system_type || 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Survey:</span>
+                    <span class="info-value">${point.survey_raw || point.survey || 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Survey Class:</span>
+                    <span class="info-value">${point.survey || 'N/A'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Year Published:</span>
+                    <span class="info-value">${point.year || 'N/A'}</span>
+                </div>
+                ${hasPaper ? `
+                <div class="info-row">
+                    <span class="info-label">Reference:</span>
+                    <span class="info-value"><a href="https://ui.adsabs.harvard.edu/abs/${paperLink}" target="_blank">View Paper</a></span>
+                </div>
+                ` : ''}
+            `;
+            
+            tooltip.style.display = 'block';
+
+            // Position tooltip accounting for canvas offset
+            const canvasRect = canvas.getBoundingClientRect();
+            tooltip.style.left = (canvasRect.left + x + 15) + 'px';
+            tooltip.style.top = (canvasRect.top + y + 15) + 'px';
+            
+            // Keep tooltip on screen
+            const rect = tooltip.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                tooltip.style.left = (x - rect.width - 15) + 'px';
+            }
+            if (rect.bottom > window.innerHeight) {
+                tooltip.style.top = (y - rect.height - 15) + 'px';
+            }
+        }
+        
+        function hideTooltip() {
+            if (!isTooltipPinned) {
+                tooltip.style.display = 'none';
+            }
+        }
+        
+        function unpinTooltip() {
+            isTooltipPinned = false;
+            pinnedPoint = null;
+            tooltip.classList.remove('pinned');
+            tooltip.style.display = 'none';
+            drawSkyMap();
+        }
+
+        // Handle legend item click for highlighting
+        function handleLegendClick(category) {
+            if (highlightFilter === category) {
+                // Clicking same category clears the filter
+                highlightFilter = null;
+            } else {
+                highlightFilter = category;
+            }
+            updateColorbar();  // Update active state styling
+            drawSkyMap();
+        }
+
+        function updateColorbar() {
+            const colorbar = document.getElementById('colorbar');
+
+            if (config.colorScheme === 'type') {
+                // Show source type legend with markers
+                const types = ['Quasar', 'Galaxy', 'AGEL', 'Unknown'];
+                colorbar.innerHTML = `
+                    <h4>Source Type <span style="font-size: 10px; color: #999;">(click to highlight)</span></h4>
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <div class="legend-item ${highlightFilter === 'Quasar' ? 'active' : ''}" data-category="Quasar">
+                            <canvas id="marker-quasar" width="30" height="30" style="border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"></canvas>
+                            <span style="margin-left: 12px;">Quasar</span>
+                        </div>
+                        <div class="legend-item ${highlightFilter === 'Galaxy' ? 'active' : ''}" data-category="Galaxy">
+                            <canvas id="marker-galaxy" width="30" height="30" style="border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"></canvas>
+                            <span style="margin-left: 12px;">Galaxy</span>
+                        </div>
+                        <div class="legend-item ${highlightFilter === 'AGEL' ? 'active' : ''}" data-category="AGEL">
+                            <canvas id="marker-agel" width="30" height="30" style="border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"></canvas>
+                            <span style="margin-left: 12px;">AGEL (any source)</span>
+                        </div>
+                        <div class="legend-item ${highlightFilter === 'Unknown' ? 'active' : ''}" data-category="Unknown">
+                            <canvas id="marker-unknown" width="30" height="30" style="border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"></canvas>
+                            <span style="margin-left: 12px;">Unknown</span>
+                        </div>
+                    </div>
+                `;
+
+                // Add click handlers
+                document.querySelectorAll('#colorbar .legend-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        handleLegendClick(item.dataset.category);
+                    });
+                });
+
+                // Draw marker examples
+                setTimeout(() => {
+                    const drawLegendMarker = (canvasId, markerType, color) => {
+                        const canvas = document.getElementById(canvasId);
+                        if (!canvas) return;
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#0a0e27';
+                        ctx.fillRect(0, 0, 30, 30);
+                        ctx.fillStyle = color;
+                        ctx.strokeStyle = color;
+                        drawMarker(ctx, 15, 15, 6, markerType);
+                    };
+
+                    drawLegendMarker('marker-quasar', 'Quasar', sourceTypeColors['Quasar']);
+                    drawLegendMarker('marker-galaxy', 'Galaxy', sourceTypeColors['Galaxy']);
+                    drawLegendMarker('marker-agel', 'star', '#ffd93d');
+                    drawLegendMarker('marker-unknown', 'Unknown', sourceTypeColors['Unknown']);
+                }, 0);
+                
+            } else if (config.colorScheme === 'survey') {
+                // Get unique surveys from visible data (filtered by year)
+                const visiblePoints = lensData.filter(point => point.year <= config.selectedYear);
+                const uniqueSurveys = new Set();
+                visiblePoints.forEach(point => {
+                    if (point.survey) uniqueSurveys.add(point.survey);
+                });
+
+                const surveys = Array.from(uniqueSurveys).sort();
+
+                colorbar.innerHTML = `
+                    <h4>Survey <span style="font-size: 10px; color: #999;">(click to highlight)</span></h4>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        ${surveys.map(survey => {
+                            const color = surveyColors[survey] || '#64b5f6';
+                            const isAGEL = isAGELSource(survey);
+                            const canvasId = `survey-marker-${survey.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+                            return `
+                            <div class="legend-item ${highlightFilter === survey ? 'active' : ''}" data-category="${survey}">
+                                <canvas id="${canvasId}" width="30" height="30" style="border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"></canvas>
+                                <span style="font-size: 12px; margin-left: 12px;">${survey}</span>
+                            </div>
+                        `}).join('')}
+                    </div>
+                `;
+
+                // Add click handlers
+                document.querySelectorAll('#colorbar .legend-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        handleLegendClick(item.dataset.category);
+                    });
+                });
+
+                // Draw survey markers
+                setTimeout(() => {
+                    surveys.forEach(survey => {
+                        const canvasId = `survey-marker-${survey.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                        const canvas = document.getElementById(canvasId);
+                        if (!canvas) return;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#0a0e27';
+                        ctx.fillRect(0, 0, 30, 30);
+
+                        const color = surveyColors[survey] || '#64b5f6';
+                        ctx.fillStyle = color;
+                        ctx.strokeStyle = color;
+
+                        // Find a sample point from this survey to get its marker type
+                        const samplePoint = lensData.find(p => p.survey === survey);
+                        const markerType = samplePoint ? getMarkerType(samplePoint) : 'Galaxy';
+
+                        drawMarker(ctx, 15, 15, 6, markerType);
+                    });
+                }, 0);
+
+            } else if (config.colorScheme === 'source_z') {
+                colorbar.innerHTML = `
+                    <h4>Source Redshift</h4>
+                    <div class="legend-gradient" style="background: linear-gradient(to right, 
+                        hsl(240, 70%, 60%), 
+                        hsl(180, 70%, 60%), 
+                        hsl(120, 70%, 60%), 
+                        hsl(60, 70%, 60%), 
+                        hsl(0, 70%, 60%))"></div>
+                    <div class="legend-labels">
+                        <span>0</span>
+                        <span>2.5</span>
+                        <span>5+</span>
+                    </div>
+                `;
+            } else if (config.colorScheme === 'lens_z') {
+                colorbar.innerHTML = `
+                    <h4>Deflector Redshift</h4>
+                    <div class="legend-gradient" style="background: linear-gradient(to right, 
+                        hsl(240, 70%, 60%), 
+                        hsl(180, 70%, 60%), 
+                        hsl(120, 70%, 60%), 
+                        hsl(60, 70%, 60%), 
+                        hsl(0, 70%, 60%))"></div>
+                    <div class="legend-labels">
+                        <span>0</span>
+                        <span>1</span>
+                        <span>2+</span>
+                    </div>
+                `;
+            }
+        }
+
+        function toggleInstructions() {
+            const instructions = document.getElementById('instructions');
+            const btn = instructions.querySelector('.toggle-btn');
+
+            if (instructions.classList.contains('collapsed')) {
+                instructions.classList.remove('collapsed');
+                btn.textContent = '−';
+            } else {
+                instructions.classList.add('collapsed');
+                btn.textContent = '+';
+            }
+        }
+
+        function toggleAxisLabels() {
+            config.showAxisLabels = !config.showAxisLabels;
+            const btn = document.getElementById('toggleAxisLabels');
+            if (config.showAxisLabels) {
+                btn.style.background = '#64b5f6';
+                btn.style.color = '#0a0e27';
+                btn.textContent = 'On';
+            } else {
+                btn.style.background = '#3a4a7a';
+                btn.style.color = '#fff';
+                btn.textContent = 'Off';
+            }
+            drawSkyMap();
+        }
+
+        // Event handlers
+        canvas.addEventListener('mousedown', (e) => {
+            const point = findPointAtMouse(e.clientX, e.clientY);
+            if (point) {
+                // Click on a point --> pin the tooltip
+                pinnedPoint = point;
+                isTooltipPinned = true;
+                tooltip.classList.add('pinned');
+                const canvasRect = canvas.getBoundingClientRect();
+                showTooltip(point, e.clientX - canvasRect.left, e.clientY - canvasRect.top);
+                drawSkyMap();
+            } else {
+                // Click on empty space --> start dragging
+                isDragging = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const dx = e.clientX - lastMouseX;
+                const dy = e.clientY - lastMouseY;
+                transform.offsetX += dx;
+                transform.offsetY += dy;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                drawSkyMap();
+            } else if (!isTooltipPinned) {
+                const point = findPointAtMouse(e.clientX, e.clientY);
+                if (point !== hoveredPoint) {
+                    hoveredPoint = point;
+                    drawSkyMap();
+                    
+                    if (point) {
+                        const canvasRect = canvas.getBoundingClientRect();
+                        showTooltip(point, e.clientX - canvasRect.left, e.clientY - canvasRect.top);
+                    } else {
+                        hideTooltip();
+                    }
+                }
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+            if (!isTooltipPinned) {
+                hoveredPoint = null;
+                hideTooltip();
+                drawSkyMap();
+            }
+        });
+        
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            transform.scale *= delta;
+            transform.scale = Math.max(0.5, Math.min(transform.scale, 5));
+            drawSkyMap();
+        });
+        
+        // Control handlers
+        document.getElementById('projection').addEventListener('change', (e) => {
+            config.projection = e.target.value;
+            drawSkyMap();
+        });
+        
+        document.getElementById('pointSize').addEventListener('input', (e) => {
+            config.pointSize = parseFloat(e.target.value);
+            document.getElementById('pointSizeValue').textContent = config.pointSize;
+            drawSkyMap();
+        });
+
+        document.getElementById('colorScheme').addEventListener('change', (e) => {
+            config.colorScheme = e.target.value;
+            highlightFilter = null;  // Clear highlight filter when changing color scheme
+            updateColorbar();
+            drawSkyMap();
+            if (redshiftChart) {
+                createRedshiftChart(); // Redraw with new colors
+            }
+        });
+
+        document.getElementById('yearSlider').addEventListener('input', (e) => {
+            config.selectedYear = parseInt(e.target.value);
+            document.getElementById('yearValue').textContent = config.selectedYear;
+            document.getElementById('yearDisplayValue').textContent = config.selectedYear;
+            drawSkyMap();
+            updateColorbar();
+            updateAllCharts();
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // Compute yearly statistics from lens data
+        function computeYearlyStats() {
+            const years = [];
+            for (let y = minYear; y <= maxYear; y++) {
+                years.push(y);
+            }
+
+            const stats = {
+                years: years,
+                Quasar: new Array(years.length).fill(0),
+                Galaxy: new Array(years.length).fill(0),
+                Unknown: new Array(years.length).fill(0)
+            };
+
+            // Count systems by year and source type
+            lensData.forEach(point => {
+                const yearIndex = point.year - minYear;
+                if (yearIndex >= 0 && yearIndex < years.length) {
+                    const type = point.source_type || 'Unknown';
+                    if (stats[type] !== undefined) {
+                        stats[type][yearIndex]++;
+                    }
+                }
+            });
+
+            // Compute cumulative totals
+            stats.Quasar_cum = [];
+            stats.Galaxy_cum = [];
+            stats.Unknown_cum = [];
+
+            let qSum = 0, gSum = 0, uSum = 0;
+            for (let i = 0; i < years.length; i++) {
+                qSum += stats.Quasar[i];
+                gSum += stats.Galaxy[i];
+                uSum += stats.Unknown[i];
+                stats.Quasar_cum.push(qSum);
+                stats.Galaxy_cum.push(gSum);
+                stats.Unknown_cum.push(uSum);
+            }
+
+            // Compute cumulative fractions
+            stats.Quasar_frac = [];
+            stats.Galaxy_frac = [];
+            stats.Unknown_frac = [];
+
+            for (let i = 0; i < years.length; i++) {
+                const total = stats.Quasar_cum[i] + stats.Galaxy_cum[i] + stats.Unknown_cum[i];
+                if (total > 0) {
+                    stats.Quasar_frac.push(stats.Quasar_cum[i] / total);
+                    stats.Galaxy_frac.push(stats.Galaxy_cum[i] / total);
+                    stats.Unknown_frac.push(stats.Unknown_cum[i] / total);
+                } else {
+                    stats.Quasar_frac.push(0);
+                    stats.Galaxy_frac.push(0);
+                    stats.Unknown_frac.push(0);
+                }
+            }
+
+            // Compute max stacked bar height for count chart (for static y-axis)
+            let maxStackedCount = 0;
+            for (let i = 0; i < years.length; i++) {
+                const stackedTotal = stats.Quasar[i] + stats.Galaxy[i] + stats.Unknown[i];
+                if (stackedTotal > maxStackedCount) {
+                    maxStackedCount = stackedTotal;
+                }
+            }
+            // Round up to nearest nice number and add some padding
+            countChartMaxY = Math.ceil(maxStackedCount * 1.1 / 10) * 10;
+
+            return stats;
+        }
+
+        // Create cumulative fraction chart (top panel)
+        function createFractionChart(stats) {
+            const ctx = document.getElementById('fractionChart').getContext('2d');
+
+            // Filter data to only show values up to selected year, null for future years
+            const yearIndex = config.selectedYear - minYear;
+            const filteredQuasarFrac = stats.Quasar_frac.map((val, i) => i <= yearIndex ? val : null);
+            const filteredGalaxyFrac = stats.Galaxy_frac.map((val, i) => i <= yearIndex ? val : null);
+            const filteredUnknownFrac = stats.Unknown_frac.map((val, i) => i <= yearIndex ? val : null);
+
+            if (fractionChart) {
+                fractionChart.destroy();
+            }
+
+            fractionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: stats.years,
+                    datasets: [{
+                        label: 'Quasar',
+                        data: filteredQuasarFrac,
+                        backgroundColor: histColors.Quasar,
+                        borderColor: '#666',
+                        borderWidth: 1
+                    }, {
+                        label: 'Galaxy',
+                        data: filteredGalaxyFrac,
+                        backgroundColor: histColors.Galaxy,
+                        borderColor: '#666',
+                        borderWidth: 1
+                    }, {
+                        label: 'Unknown',
+                        data: filteredUnknownFrac,
+                        backgroundColor: histColors.Unknown,
+                        borderColor: '#666',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    layout: {
+                        padding: {
+                            left: 5,
+                            right: 5,
+                            top: 5,
+                            bottom: 5
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: {
+                                color: '#e0e0e0',
+                                font: { size: 9 },
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: { color: 'rgba(100, 181, 246, 0.1)' }
+                        },
+                        y: {
+                            stacked: true,
+                            min: 0,
+                            max: 1,
+                            ticks: {
+                                color: '#e0e0e0',
+                                font: { size: 10 }
+                            },
+                            grid: { color: 'rgba(100, 181, 246, 0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0',
+                                font: { size: 10 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                footer: function(items) {
+                                    const yearIndex = items[0].dataIndex;
+                                    return `Cumulative: Q=${stats.Quasar_cum[yearIndex]}, G=${stats.Galaxy_cum[yearIndex]}, U=${stats.Unknown_cum[yearIndex]}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create per-year count chart (middle panel)
+        function createCountChart(stats) {
+            const ctx = document.getElementById('countChart').getContext('2d');
+
+            // Filter data to only show values up to selected year, null for future years
+            const yearIndex = config.selectedYear - minYear;
+            const filteredQuasar = stats.Quasar.map((val, i) => i <= yearIndex ? val : null);
+            const filteredGalaxy = stats.Galaxy.map((val, i) => i <= yearIndex ? val : null);
+            const filteredUnknown = stats.Unknown.map((val, i) => i <= yearIndex ? val : null);
+
+            if (countChart) {
+                countChart.destroy();
+            }
+
+            countChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: stats.years,
+                    datasets: [{
+                        label: 'Quasar',
+                        data: filteredQuasar,
+                        backgroundColor: histColors.Quasar,
+                        borderColor: '#666',
+                        borderWidth: 1
+                    }, {
+                        label: 'Galaxy',
+                        data: filteredGalaxy,
+                        backgroundColor: histColors.Galaxy,
+                        borderColor: '#666',
+                        borderWidth: 1
+                    }, {
+                        label: 'Unknown',
+                        data: filteredUnknown,
+                        backgroundColor: histColors.Unknown,
+                        borderColor: '#666',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    layout: {
+                        padding: {
+                            left: 5,
+                            right: 5,
+                            top: 5,
+                            bottom: 5
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: {
+                                color: '#e0e0e0',
+                                font: { size: 9 },
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: { color: 'rgba(100, 181, 246, 0.1)' }
+                        },
+                        y: {
+                            stacked: true,
+                            min: 0,
+                            max: countChartMaxY,  // Static y-axis max
+                            ticks: {
+                                color: '#e0e0e0',
+                                font: { size: 10 }
+                            },
+                            grid: { color: 'rgba(100, 181, 246, 0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0',
+                                font: { size: 10 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                footer: function(items) {
+                                    const yearIndex = items[0].dataIndex;
+                                    return `Cumulative: Q=${stats.Quasar_cum[yearIndex]}, G=${stats.Galaxy_cum[yearIndex]}, U=${stats.Unknown_cum[yearIndex]}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create redshift scatter plot (bottom-left panel)
+        function createRedshiftChart() {
+            const ctx = document.getElementById('redshiftChart').getContext('2d');
+
+            const visiblePoints = lensData.filter(point => point.year <= config.selectedYear);
+
+            const scatterData = visiblePoints.map(point => ({
+                x: parseFloat(point.lens_z) || 0,
+                y: parseFloat(point.source_z) || 0,
+                point: point
+            })).filter(d => !isNaN(d.x) && !isNaN(d.y) && d.x > 0 && d.y > 0);
+
+            if (redshiftChart) {
+                redshiftChart.destroy();
+            }
+
+            redshiftChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Gravitational Lensing Systems',
+                        data: scatterData,
+                        backgroundColor: scatterData.map(d => getColorForPoint(d.point)),
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    layout: {
+                        padding: {
+                            left: 5,
+                            right: 5,
+                            top: 5,
+                            bottom: 5
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            min: 0,
+                            max: 1.4,
+                            title: {
+                                display: true,
+                                text: 'z_deflector',
+                                color: '#e0e0e0',
+                                font: { size: 11 }
+                            },
+                            ticks: {
+                                color: '#e0e0e0',
+                                font: { size: 10 }
+                            },
+                            grid: { color: 'rgba(100, 181, 246, 0.1)' }
+                        },
+                        y: {
+                            type: 'linear',
+                            min: 0,
+                            max: 8.5,
+                            title: {
+                                display: true,
+                                text: 'z_source',
+                                color: '#e0e0e0',
+                                font: { size: 11 }
+                            },
+                            ticks: {
+                                color: '#e0e0e0',
+                                font: { size: 10 }
+                            },
+                            grid: { color: 'rgba(100, 181, 246, 0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const point = context.raw.point;
+                                    return [
+                                        `System: ${point.system_name}`,
+                                        `Survey: ${point.survey}`,
+                                        `z_def: ${point.lens_z}`,
+                                        `z_src: ${point.source_z}`,
+                                        `Year: ${point.year}`
+                                    ];
+                                }
+                            }
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                drag: {
+                                    enabled: true,
+                                    backgroundColor: 'rgba(100, 181, 246, 0.2)',
+                                    borderColor: 'rgba(100, 181, 246, 0.8)',
+                                    borderWidth: 1
+                                },
+                                mode: 'xy',
+                            },
+                            limits: {
+                                x: { min: 0, max: 2 },
+                                y: { min: 0, max: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Reset zoom on redshift chart
+        function resetRedshiftZoom() {
+            if (redshiftChart) {
+                redshiftChart.resetZoom();
+            }
+        }
+
+        // Update all charts when year changes
+        function updateAllCharts() {
+            if (yearlyStats) {
+                createFractionChart(yearlyStats);
+                createCountChart(yearlyStats);
+                createRedshiftChart();
+            }
+        }
+
+        // Load data
+        async function loadData() {
+            try {
+                const response = await fetch('./spec_conf_lens_db.csv');
+                const csvText = await response.text();
+                
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        lensData = results.data.map(row => {
+                            const normalizedType = normalizeSystemType(row['kind'] || row['type'] || 'Unknown');
+                            const sourceType = getSourceType(row['kind'] || row['type'] || 'Unknown');
+                            const rawSurvey = row['Survey'] || row['survey'] || row['Database'] || row['database'] || 'Unknown';
+                            const survey = classifySurvey(rawSurvey);
+                            const isAGEL = isAGELSource(rawSurvey);
+
+                            return {
+                                system_name: row['name'] || row['System Name'] || row['Name'] || 'Unknown',
+                                ra: parseFloat(row['ra'] || row['RA'] || 0),
+                                dec: parseFloat(row['dec'] || row['DEC'] || row['Dec'] || 0),
+                                source_z: row['z_src'] || row['z_source'] || row['zs'] || 'N/A',
+                                lens_z: row['z_def'] || row['z_lens'] || row['zl'] || 'N/A',
+                                system_type: normalizedType,
+                                source_type: sourceType,
+                                survey: survey,
+                                survey_raw: rawSurvey,  // Keep original for display in tooltip
+                                is_agel: isAGEL,
+                                year: parseInt(row['year'] || 2025),
+                                paper_link: row['paper'] || row['paper_link'] || ''
+                            };
+                        }).filter(p => !isNaN(p.ra) && !isNaN(p.dec));
+
+                        // Compute min and max years from data
+                        const years = lensData.map(p => p.year).filter(y => !isNaN(y));
+                        if (years.length > 0) {
+                            minYear = Math.min(...years);
+                            maxYear = Math.max(...years);
+                            config.selectedYear = maxYear;
+
+                            // Update slider
+                            const yearSlider = document.getElementById('yearSlider');
+                            yearSlider.min = minYear;
+                            yearSlider.max = maxYear;
+                            yearSlider.value = maxYear;
+                            document.getElementById('yearValue').textContent = maxYear;
+                            document.getElementById('yearDisplayValue').textContent = maxYear;
+                        }
+
+                        // Generate colors for surveys
+                        const uniqueSurveys = [...new Set(lensData.map(p => p.survey))];
+                        uniqueSurveys.forEach((survey) => {
+                            // Use predefined color if available, otherwise use 'Others' color
+                            surveyColors[survey] = surveyColorPalette[survey] || surveyColorPalette['Others'];
+                        });
+
+                        loading.style.display = 'none';
+
+                        // Compute yearly statistics and create charts
+                        yearlyStats = computeYearlyStats();
+                        createFractionChart(yearlyStats);
+                        createCountChart(yearlyStats);
+                        createRedshiftChart();
+
+                        updateColorbar();
+                        resizeCanvas();
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading data:', error);
+                loading.innerHTML = '<div style="color: #ff6b6b;">Error loading data. Please check the console.</div>';
+            }
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
